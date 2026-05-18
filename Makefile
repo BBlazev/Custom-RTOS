@@ -40,10 +40,10 @@ $(BUILD_DIR)/%.o: %.s
 	$(AS) $(ASFLAGS) -c $< -o $@
 
 run: $(BUILD_DIR)/$(TARGET).elf
-	qemu-system-arm -machine mps2-an385 -cpu cortex-m3 -nographic -kernel $
+	qemu-system-arm -machine mps2-an385 -cpu cortex-m3 -nographic -kernel $(BUILD_DIR)/$(TARGET).elf
 
 debug: $(BUILD_DIR)/$(TARGET).elf
-	qemu-system-arm -machine mps2-an385 -cpu cortex-m3 -nographic -kernel $< -S -gdb tcp::3333
+	qemu-system-arm -machine mps2-an385 -cpu cortex-m3 -nographic -kernel $(BUILD_DIR)/$(TARGET).elf -S -gdb tcp::3333
 
 clean:
 	rm -rf $(BUILD_DIR)
