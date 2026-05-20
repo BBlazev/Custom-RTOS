@@ -55,3 +55,33 @@ g_ticks is systems monotonic clock, counts ms since boot, used for (later):
     -timeouts on locks/queues
     -round robin etc.
 
+high addr:   stack[256]  ┌──────────────┐  ← top of stack empty
+             stack[255]  │    xPSR      │  ← 0x01000000 - crotex M required
+             stack[254]  │     PC       │  ← address of task entry function
+             stack[253]  │     LR       │  ← 0xFFFFFFFD - EXC_RETURN value
+             stack[252]  │     R12      │  ← 0 dont care
+             stack[251]  │     R3       │  ← 0
+             stack[250]  │     R2       │  ← 0
+             stack[249]  │     R1       │  ← 0
+             stack[248]  │     R0       │  ← 0  end of hardware frame
+             stack[247]  │     R11      │  ← 0  start of software frame
+             stack[246]  │     R10      │  ← 0
+             stack[245]  │     R9       │  ← 0
+             stack[244]  │     R8       │  ← 0
+             stack[243]  │     R7       │  ← 0
+             stack[242]  │     R6       │  ← 0
+             stack[241]  │     R5       │  ← 0
+             stack[240]  │     R4       │  ← 0  ← g_tasks[i].sp points here
+             stack[239]  │              │
+                         │  rest of     │
+                         │   stack,     │
+                         │   empty      │
+             stack[0]    │              │
+low addr:                └──────────────┘
+
+fake initial stack frame - task_create:
+    - constructs a 16 word frame at top of new tasks stack that mimics what real context switch
+        out produces
+    -PC slot hold entry function address
+    - save xpsr has "Thumb" (cortex m thing) bit set 0x01000000
+    -TCB .sp points at bottom of &stack[TASK_STACK_WORDS - 16]
