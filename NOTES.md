@@ -50,4 +50,8 @@ Integer-to-string: extract digits with v % 10, divide by 10, fill a buffer backw
 SysTick math: LOAD = (CPU_HZ / 1000) * ms - 1, -1 is because SysTick counts inclusive of 0, divide first, multiply second, to avoid overflow
 SysTick CTRL bits: ENABLE (bit 0) starts the counter, TICKINT (bit 1) enables interrupts on reload, CLKSOURCE (bit 2) picks processor clock vs reference clock
 
+g_ticks is systems monotonic clock, counts ms since boot, used for (later):
+    -rtos_sleep
+    -timeouts on locks/queues
+    -round robin etc.
 
