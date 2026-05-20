@@ -21,6 +21,9 @@ int task_create(task_entry_t entry, uint32_t id)
     uint32_t *sp = &t->stack[TASK_STACK_WORDS];
 
     //important: push from high adresses down,meaning xpsr is first
+    //important: we decrement sp first, then dereference, starting at 255, 256 is empty,
+    //           cortex m reason
+
     *(--sp) = 0x01000000U;      //xPSR "Thumb" bit from crotex m
     *(--sp) = (uint32_t)entry;  //PC
     *(--sp) = 0xFFFFFFFDU;       //LR EXC_RETURN
@@ -40,7 +43,7 @@ int task_create(task_entry_t entry, uint32_t id)
     *(--sp) = 0x00000000U;      //R5 
     *(--sp) = 0x00000000U;      //R4 
 
-    //SAVE FINAL SP
+    //SAVE FINAL SP, points to 240
     t->sp = sp;
 
     g_num_tasks++;
