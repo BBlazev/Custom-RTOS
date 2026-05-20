@@ -86,4 +86,16 @@ fake initial stack frame - task_create:
     - save xpsr has "Thumb" (cortex m thing) bit set 0x01000000
     -TCB .sp points at bottom of &stack[TASK_STACK_WORDS - 16]
 
-We create a new task with a fake register frame on its stack. When a switch is triggered (PendSV pended), the CPU finishes its current instruction, then automatically pushes 8 registers (R0-R3, R12, LR, PC, xPSR) onto the current tasks stack via PSP, loads LR with EXC_RETURN, switches the active SP to MSP, and jumps to PendSV_Handler. The handler reads PSP into R0, pushes R4-R11 to extend the saved frame, and stores the resulting R0 into g_current_task->sp. Then it overwrites the g_current_task pointer with g_next_task. Then it reads the new tasks saved SP from its TCB, pops R4-R11 from that stack into the CPU, writes the resulting R0 back to PSP, and does bx lr. The CPU sees EXC_RETURN in LR, pops the other 8 registers from PSP, loads the popped PC, and starts executing the new task.
+We create a new task with a fake register frame on its stack. When a switch is triggered (PendSV pended), the CPU finishes its current instruction, then automatically pushes 8 registers (R0-R3, R12, LR, PC, xPSR) onto the current tasks stack via PSP, loads LR with EXC_RETURN, switches the active SP to MSP, and jumps to PendSV_Handler. The handler reads PSP into R0, pushes R4-R11 to extend the saved frame, and stores the resulting R0 into g_current_task->sp. Then it overwrites the g_current_task pointer with g_next_task. Then it reads the new tasks saved SP from its TCB, pops R4-R11at stack into the CPU, writes the resulting R0 back to PSP, and does bx lr. The CPU sees EXC_RETURN in LR, pops the other 8 registers from PSP, loads the popped PC, and starts executing the new task.
+
+
+
+bootsrap bug: when first pendsv fires from rtos_start, cpu is on MSP
+hardware sets exc_return to 0xFFFFFFF9 (return to msp)
+meaning it returns to iself back into rtos start spin loop
+fix: forced 0xFFFFFFFD before bx lr in handler
+
+EXC_RETURN values:
+0xFFFFFFF9 = return to thread mode, MSP
+0xFFFFFFFD = return to thread mode, PSP (our tasks)
+0xFFFFFFF1 = return to handler mode (nested exceptions)

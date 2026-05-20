@@ -2,6 +2,10 @@
 #include <stddef.h>
 #include "task.h"
 
+#define SCB_ISCR            (*(volatile uint32_t *)0xE000ED04)
+#define SCB_ISCR_PENDSVSET  (1U << 28)
+
+
 static TCB_t g_tasks[MAX_TASKS];
 static uint32_t g_num_tasks = 0;
 
@@ -48,4 +52,30 @@ int task_create(task_entry_t entry, uint32_t id)
 
     g_num_tasks++;
     return 0;
+}
+
+static void pick_next_task(void)
+{
+    uint32_t current_idx = (uint32_t)(g_current_task - g_tasks);
+    uint32_t next_idx = (current_idx + 1U) % g_num_tasks;
+    g_next_task = &g_tasks[next_idx];
+}
+
+void rtos_yield(void)
+{
+    pick_next_task();
+    SCB_ISCR = SCB_ISCR_PENDSVSET;
+}
+
+void rtos_start(void)
+{
+    if(g_num_tasks == 0)
+        return;
+
+    g_next_task = &g_tasks[0];
+    SCB_ISCR = SCB_ISCR_PENDSVSET; // pend pendsv, will fire as soon as interrupts run
+
+    __asm volatile("cpsie i"); // enable interrupts, pendsv will fire immediately
+
+    for(;;){} // just a guard, never reaches
 }

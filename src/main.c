@@ -1,6 +1,27 @@
 #include <stdint.h>
 #include "uart.h"
+#include "task.h"
 #include "systick.h"
+
+#define SHPR3_PENDSV (*(volatile uint8_t*)0xE000ED22)
+
+static void task_a(void)
+{
+    for(;;)
+    {
+        uart_putc('A');
+        rtos_yield();
+    }
+}
+
+static void task_b(void)
+{
+    for(;;)
+    {
+        uart_putc('B');
+        rtos_yield();
+    }
+}
 
 static void uart_put_uint(uint32_t v)
 {
@@ -22,20 +43,20 @@ static void uart_put_uint(uint32_t v)
 
 int main(void)
 {
+
+    __asm volatile("cpsid i"); //disable interrupt until we are rdy
+
     uart_init();
     uart_puts("RTOS booting\r\n");
-    systick_init(1);
-    uint32_t last_printed = 0;
-    for(;;){
-        uint32_t now = systick_get_ticks();
-        if(now - last_printed >= 1000){
 
-            uart_puts("tick=");
-            uart_put_uint(now);
-            uart_puts("\r\n");
-            last_printed = now;
-        }
-    }
+    SHPR3_PENDSV = 0xFF;
+
+    task_create(task_a, 1);
+    task_create(task_b, 2);
+
+    uart_puts("Starting scheduler\r\n");
+    rtos_start();
+    for(;;){}
 
     return 0;
 }
