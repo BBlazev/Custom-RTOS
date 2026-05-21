@@ -26,5 +26,6 @@ typedef struct {
 int task_create(task_entry_t entry, uint32_t id);
 void rtos_yield(void);
 void rtos_start(void);
+void rtos_schedule(void);
 
 #endif

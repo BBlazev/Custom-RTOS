@@ -1,26 +1,45 @@
+
+/*
+    race condition in last_printed shows in output:
+    ABBABABAABBBAABBAAABBAAAABAABBAABBAAABBAAABBAAABBAABBAABBAABBAAAABBAABBAABB
+    AABBAABBAABBAABBAABABBAABBBAABBABABBAABBBAABBA
+*/
+
+
 #include <stdint.h>
 #include "uart.h"
 #include "task.h"
 #include "systick.h"
 
-#define SHPR3_PENDSV (*(volatile uint8_t*)0xE000ED22)
 
-static void task_a(void)
+#define SHPR3_PENDSV    (*(volatile uint8_t*)0xE000ED22)
+#define SHPR3_SYSTICK   (*(volatile uint8_t*)0xE000ED23)
+
+
+static uint32_t last_printed = 0;
+
+static void print_timer(uint32_t ms, char c)
 {
     for(;;)
     {
-        uart_putc('A');
-        rtos_yield();
+        uint32_t now = systick_get_ticks();
+        if(now - last_printed >= ms)
+        {
+            uart_putc(c);
+            last_printed = now;
+        }
+
     }
+}
+
+static void task_a(void)
+{
+    print_timer(100, 'A');
 }
 
 static void task_b(void)
 {
-    for(;;)
-    {
-        uart_putc('B');
-        rtos_yield();
-    }
+    print_timer(100, 'B');
 }
 
 static void uart_put_uint(uint32_t v)
@@ -49,10 +68,14 @@ int main(void)
     uart_init();
     uart_puts("RTOS booting\r\n");
 
-    SHPR3_PENDSV = 0xFF;
-
+    
+    SHPR3_PENDSV    = 0xFF;
+    SHPR3_SYSTICK   = 0xE0;
+    
     task_create(task_a, 1);
     task_create(task_b, 2);
+    
+    systick_init(1);
 
     uart_puts("Starting scheduler\r\n");
     rtos_start();

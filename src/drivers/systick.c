@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <systick.h>
+#include "task.h"
 
 
 #define SYSTICK_BASE 0XE000E010U
@@ -32,4 +33,5 @@ uint32_t systick_get_ticks(void)
 void SysTick_Handler(void)
 {
     g_ticks++;
+    rtos_schedule();
 }

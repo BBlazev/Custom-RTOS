@@ -53,7 +53,7 @@ int task_create(task_entry_t entry, uint32_t id)
     g_num_tasks++;
     return 0;
 }
-
+// RR
 static void pick_next_task(void)
 {
     uint32_t current_idx = (uint32_t)(g_current_task - g_tasks);
@@ -63,8 +63,7 @@ static void pick_next_task(void)
 
 void rtos_yield(void)
 {
-    pick_next_task();
-    SCB_ISCR = SCB_ISCR_PENDSVSET;
+    rtos_schedule();
 }
 
 void rtos_start(void)
@@ -78,4 +77,10 @@ void rtos_start(void)
     __asm volatile("cpsie i"); // enable interrupts, pendsv will fire immediately
 
     for(;;){} // just a guard, never reaches
+}
+
+void rtos_schedule(void)
+{
+    pick_next_task();
+    SCB_ISCR = SCB_ISCR_PENDSVSET;
 }
