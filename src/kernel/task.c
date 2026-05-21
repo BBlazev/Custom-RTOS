@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "task.h"
+#include "systick.h"
 
 #define SCB_ISCR            (*(volatile uint32_t *)0xE000ED04)
 #define SCB_ISCR_PENDSVSET  (1U << 28)
@@ -56,9 +57,19 @@ int task_create(task_entry_t entry, uint32_t id)
 // RR
 static void pick_next_task(void)
 {
-    uint32_t current_idx = (uint32_t)(g_current_task - g_tasks);
-    uint32_t next_idx = (current_idx + 1U) % g_num_tasks;
-    g_next_task = &g_tasks[next_idx];
+    for(int p = 0; p < MAX_PRIO; p++)
+    {
+        if(g_ready[p] != 0)
+        {
+            g_next_task = g_ready[p];
+            g_ready[p] = g_ready[p]->next;
+            g_next_task->next = NULL;
+            //append_to_ready(g_next_task);
+            return;
+        }
+    }
+    g_next_task = NULL;
+
 }
 
 void rtos_yield(void)
@@ -83,4 +94,19 @@ void rtos_schedule(void)
 {
     pick_next_task();
     SCB_ISCR = SCB_ISCR_PENDSVSET;
+}
+
+void rtos_sleep(uint32_t ms)
+{
+    __asm volatile("cpsid i");
+    g_current_task->wake_at = systick_get_ticks() + ms;
+    g_current_task->state = TASK_BLOCKED;
+
+    //remove_from_ready(g_current_task);
+    //insert_blocked(g_current_task);
+    pick_next_task();
+
+    SCB_ISCR = SCB_ISCR_PENDSVSET;
+
+    __asm volatile("cpsie i");
 }

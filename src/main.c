@@ -1,11 +1,3 @@
-
-/*
-    race condition in last_printed shows in output:
-    ABBABABAABBBAABBAAABBAAAABAABBAABBAAABBAAABBAAABBAABBAABBAABBAAAABBAABBAABB
-    AABBAABBAABBAABBAABABBAABBBAABBABABBAABBBAABBA
-*/
-
-
 #include <stdint.h>
 #include "uart.h"
 #include "task.h"

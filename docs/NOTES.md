@@ -99,3 +99,6 @@ EXC_RETURN values:
 0xFFFFFFF9 = return to thread mode, MSP
 0xFFFFFFFD = return to thread mode, PSP (our tasks)
 0xFFFFFFF1 = return to handler mode (nested exceptions)
+
+race condition emerge with preemption
+shared variable (last_printed) read-modify-write across a context switch is unsafe
