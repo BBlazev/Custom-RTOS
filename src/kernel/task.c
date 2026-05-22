@@ -6,21 +6,64 @@
 #define SCB_ISCR            (*(volatile uint32_t *)0xE000ED04)
 #define SCB_ISCR_PENDSVSET  (1U << 28)
 
-
-static TCB_t g_tasks[MAX_TASKS];
+static TCB_t   *g_ready[MAX_PRIO];
+static TCB_t   *g_blocked;
+static TCB_t    g_tasks[MAX_TASKS];
 static uint32_t g_num_tasks = 0;
 
-TCB_t *g_current_task = NULL;
-TCB_t *g_next_task = NULL;
+TCB_t *g_current_task = NULL;  
+TCB_t *g_next_task    = NULL;
 
-int task_create(task_entry_t entry, uint32_t id)
+static void idle_task(void) { for(;;){} }
+
+static void append_to_ready(TCB_t *t)
+{
+    t->next = NULL;
+    if (g_ready[t->priority] == NULL) {
+        g_ready[t->priority] = t;
+        return;
+    }
+    TCB_t *p = g_ready[t->priority];
+    while (p->next != NULL)
+        p = p->next;
+    p->next = t;
+}
+
+static void remove_from_ready(TCB_t *t)
+{
+    TCB_t **pp = &g_ready[t->priority];
+    while (*pp != NULL && *pp != t) {
+        pp = &(*pp)->next;
+    }
+    if (*pp == t) {
+        *pp = t->next;
+    }
+    t->next = NULL;
+}
+
+static void insert_blocked(TCB_t *t)
+{
+    TCB_t **pp = &g_blocked;
+    while (*pp != NULL && (*pp)->wake_at <= t->wake_at) {
+        pp = &(*pp)->next;
+    }
+    t->next = *pp;
+    *pp = t;
+}
+
+int task_create(task_entry_t entry, uint32_t id, uint32_t priority)
 {
     if (g_num_tasks >= MAX_TASKS)
+        return -1;
+    if(priority >= MAX_PRIO) 
         return -1;
 
     TCB_t *t = &g_tasks[g_num_tasks];
     t->state = TASK_READY;
     t->id = id;
+    t->priority = priority;
+    t->wake_at = 0;
+    t->next = NULL;
 
     //push nowe 16 words by decrementing this pointer *sp
     uint32_t *sp = &t->stack[TASK_STACK_WORDS];
@@ -51,20 +94,21 @@ int task_create(task_entry_t entry, uint32_t id)
     //SAVE FINAL SP, points to 240
     t->sp = sp;
 
+    append_to_ready(t);
     g_num_tasks++;
     return 0;
 }
 // RR
-static void pick_next_task(void)
+static void sheduler(void)
 {
-    for(int p = 0; p < MAX_PRIO; p++)
+    for(uint32_t p = 0; p < MAX_PRIO; p++)
     {
         if(g_ready[p] != 0)
         {
             g_next_task = g_ready[p];
             g_ready[p] = g_ready[p]->next;
             g_next_task->next = NULL;
-            //append_to_ready(g_next_task);
+            append_to_ready(g_next_task);
             return;
         }
     }
@@ -79,10 +123,11 @@ void rtos_yield(void)
 
 void rtos_start(void)
 {
-    if(g_num_tasks == 0)
-        return;
+    task_create(idle_task, 0, MAX_PRIO-1);
 
-    g_next_task = &g_tasks[0];
+    sheduler();
+    g_current_task = NULL;
+
     SCB_ISCR = SCB_ISCR_PENDSVSET; // pend pendsv, will fire as soon as interrupts run
 
     __asm volatile("cpsie i"); // enable interrupts, pendsv will fire immediately
@@ -92,7 +137,7 @@ void rtos_start(void)
 
 void rtos_schedule(void)
 {
-    pick_next_task();
+    sheduler();
     SCB_ISCR = SCB_ISCR_PENDSVSET;
 }
 
@@ -102,11 +147,24 @@ void rtos_sleep(uint32_t ms)
     g_current_task->wake_at = systick_get_ticks() + ms;
     g_current_task->state = TASK_BLOCKED;
 
-    //remove_from_ready(g_current_task);
-    //insert_blocked(g_current_task);
-    pick_next_task();
+    remove_from_ready(g_current_task);
+    insert_blocked(g_current_task);
+    sheduler();
 
     SCB_ISCR = SCB_ISCR_PENDSVSET;
 
     __asm volatile("cpsie i");
+}
+
+void rtos_tick(uint32_t now)
+{
+    while (g_blocked != NULL && g_blocked->wake_at <= now) {
+        TCB_t *t = g_blocked;
+        g_blocked = g_blocked->next;   
+        t->state = TASK_READY;
+        append_to_ready(t);            
+    }
+
+    sheduler();
+    SCB_ISCR = SCB_ISCR_PENDSVSET;
 }

@@ -26,12 +26,17 @@ static void print_timer(uint32_t ms, char c)
 
 static void task_a(void)
 {
-    print_timer(100, 'A');
+    for(;;) {
+        uart_putc('H');
+        rtos_sleep(10); 
+    }
 }
 
 static void task_b(void)
 {
-    print_timer(100, 'B');
+    for(;;) {
+        uart_putc('.');
+    }
 }
 
 static void uart_put_uint(uint32_t v)
@@ -64,8 +69,8 @@ int main(void)
     SHPR3_PENDSV    = 0xFF;
     SHPR3_SYSTICK   = 0xE0;
     
-    task_create(task_a, 1);
-    task_create(task_b, 2);
+    task_create(task_a, 1, 0);
+    task_create(task_b, 2, 2);
     
     systick_init(1);
 

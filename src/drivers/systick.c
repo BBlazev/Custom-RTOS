@@ -33,5 +33,5 @@ uint32_t systick_get_ticks(void)
 void SysTick_Handler(void)
 {
     g_ticks++;
-    rtos_schedule();
+    rtos_tick(g_ticks);
 }

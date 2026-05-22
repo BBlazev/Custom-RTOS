@@ -8,7 +8,6 @@
 #define MAX_TASKS           4
 #define MAX_PRIO            4
 
-
 typedef enum {
     TASK_READY,
     TASK_RUNNING,
@@ -27,13 +26,14 @@ typedef struct tcb {
     struct tcb      *next;
 } TCB_t;
 
-static TCB_t *g_ready[MAX_PRIO];
-static TCB_t *g_blocked;
+extern TCB_t *g_current_task;
+extern TCB_t *g_next_task;
 
-int task_create(task_entry_t entry, uint32_t id);
+int  task_create(task_entry_t entry, uint32_t id, uint32_t priority);
 void rtos_yield(void);
 void rtos_start(void);
 void rtos_sleep(uint32_t ms);
 void rtos_schedule(void);
+void rtos_tick(uint32_t now);
 
 #endif
