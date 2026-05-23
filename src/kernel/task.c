@@ -101,7 +101,7 @@ int task_create(task_entry_t entry, uint32_t id, uint32_t priority)
     return 0;
 }
 // RR
-static void sheduler(void)
+static void scheduler(void)
 {
     for(uint32_t p = 0; p < MAX_PRIO; p++)
     {
@@ -127,7 +127,7 @@ void rtos_start(void)
 {
     task_create(idle_task, 0, MAX_PRIO-1);
 
-    sheduler();
+    scheduler();
     g_current_task = NULL; 
 
     SCB_ISCR = SCB_ISCR_PENDSVSET; // pend pendsv, will fire as soon as interrupts run
@@ -139,7 +139,7 @@ void rtos_start(void)
 
 void rtos_schedule(void)
 {
-    sheduler();
+    scheduler();
     SCB_ISCR = SCB_ISCR_PENDSVSET;
 }
 
@@ -151,7 +151,7 @@ void rtos_sleep(uint32_t ms)
 
     remove_from_ready(g_current_task);
     insert_blocked(g_current_task);
-    sheduler();
+    scheduler();
 
     SCB_ISCR = SCB_ISCR_PENDSVSET;
 
@@ -167,6 +167,45 @@ void rtos_tick(uint32_t now)
         append_to_ready(t);            
     }
 
-    sheduler();
+    scheduler();
     SCB_ISCR = SCB_ISCR_PENDSVSET;
+}
+
+void block_current_task(TCB_t **wait_list)
+{
+    TCB_t *t = g_current_task;
+    t->state = TASK_BLOCKED;
+
+    remove_from_ready(t);
+
+    //append it to wait list
+    t->next = NULL;
+    if(*wait_list == NULL) //if empty, put it as head
+        *wait_list = t;
+    else
+    {
+        TCB_t *p = *wait_list;
+        while(p->next != NULL) //traverse LL, put t as last
+            p = p->next;
+        p->next = t;
+    }
+    scheduler();
+    SCB_ISCR = SCB_ISCR_PENDSVSET;
+    
+}
+
+TCB_t *unblock_one_task(TCB_t **wait_list)
+{
+    if(*wait_list == NULL) 
+        return NULL;
+
+    //t will be head from wait list, t->next is now head of wait list
+    TCB_t *t = *wait_list;
+    *wait_list = t->next;
+    t->next = NULL;
+
+    t->state = TASK_READY;
+    append_to_ready(t);
+
+    return t;
 }

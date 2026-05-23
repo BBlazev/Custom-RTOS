@@ -36,4 +36,7 @@ void rtos_sleep(uint32_t ms);
 void rtos_schedule(void);
 void rtos_tick(uint32_t now);
 
+void block_current_task(TCB_t **wait_list);
+TCB_t *unblock_one_task(TCB_t **wait_list);
+
 #endif
