@@ -8,10 +8,10 @@
 #define SHPR3_SYSTICK   (*(volatile uint8_t*)0xE000ED23)
 
 
-static uint32_t last_printed = 0;
 
 static void print_timer(uint32_t ms, char c)
 {
+    uint32_t last_printed = 0;
     for(;;)
     {
         uint32_t now = systick_get_ticks();
@@ -27,15 +27,26 @@ static void print_timer(uint32_t ms, char c)
 static void task_a(void)
 {
     for(;;) {
-        uart_putc('H');
-        rtos_sleep(10); 
+        print_timer(200, 'A');
     }
 }
 
 static void task_b(void)
 {
     for(;;) {
-        uart_putc('.');
+        print_timer(200, 'B');
+    }
+}
+static void task_c(void)
+{
+    for(;;) {
+        print_timer(200, 'C');
+    }
+}
+static void task_d(void)
+{
+    for(;;) {
+        print_timer(200, 'D');
     }
 }
 
@@ -69,9 +80,11 @@ int main(void)
     SHPR3_PENDSV    = 0xFF;
     SHPR3_SYSTICK   = 0xE0;
     
-    task_create(task_a, 1, 0);
+    task_create(task_a, 1, 2);
     task_create(task_b, 2, 2);
-    
+    task_create(task_c, 3, 2);
+    task_create(task_d, 4, 2);
+
     systick_init(1);
 
     uart_puts("Starting scheduler\r\n");

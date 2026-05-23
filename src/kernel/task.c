@@ -8,9 +8,11 @@
 
 static TCB_t   *g_ready[MAX_PRIO];
 static TCB_t   *g_blocked;
+static TCB_t   *g_wait_list;
 static TCB_t    g_tasks[MAX_TASKS];
 static uint32_t g_num_tasks = 0;
 
+ 
 TCB_t *g_current_task = NULL;  
 TCB_t *g_next_task    = NULL;
 
@@ -126,7 +128,7 @@ void rtos_start(void)
     task_create(idle_task, 0, MAX_PRIO-1);
 
     sheduler();
-    g_current_task = NULL;
+    g_current_task = NULL; 
 
     SCB_ISCR = SCB_ISCR_PENDSVSET; // pend pendsv, will fire as soon as interrupts run
 
