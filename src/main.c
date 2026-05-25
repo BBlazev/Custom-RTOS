@@ -2,12 +2,12 @@
 #include "uart.h"
 #include "task.h"
 #include "systick.h"
-
+#include "sem.h"
 
 #define SHPR3_PENDSV    (*(volatile uint8_t*)0xE000ED22)
 #define SHPR3_SYSTICK   (*(volatile uint8_t*)0xE000ED23)
 
-
+static sem_t g_sem;
 
 static void print_timer(uint32_t ms, char c)
 {
@@ -24,29 +24,20 @@ static void print_timer(uint32_t ms, char c)
     }
 }
 
-static void task_a(void)
+static void producer(void)
 {
     for(;;) {
-        print_timer(200, 'A');
+        rtos_sleep(1000);     
+        uart_putc('+');       
+        sem_give(&g_sem);     
     }
 }
 
-static void task_b(void)
+static void consumer(void)
 {
     for(;;) {
-        print_timer(200, 'B');
-    }
-}
-static void task_c(void)
-{
-    for(;;) {
-        print_timer(200, 'C');
-    }
-}
-static void task_d(void)
-{
-    for(;;) {
-        print_timer(200, 'D');
+        sem_take(&g_sem);     
+        uart_putc('C');       
     }
 }
 
@@ -80,10 +71,10 @@ int main(void)
     SHPR3_PENDSV    = 0xFF;
     SHPR3_SYSTICK   = 0xE0;
     
-    task_create(task_a, 1, 2);
-    task_create(task_b, 2, 2);
-    task_create(task_c, 3, 2);
-    task_create(task_d, 4, 2);
+    sem_init(&g_sem, 0);
+
+    task_create(producer, 1, 1);
+    task_create(consumer, 2, 0);
 
     systick_init(1);
 

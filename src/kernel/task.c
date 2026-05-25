@@ -199,13 +199,45 @@ TCB_t *unblock_one_task(TCB_t **wait_list)
     if(*wait_list == NULL) 
         return NULL;
 
+    TCB_t **best = wait_list;
+    TCB_t **pp = wait_list;
+    while(*pp != NULL)
+    {
+        if((*pp)->priority < (*best)->priority)
+        best = pp;
+        pp = &(*pp)->next;
+    }
+        
     //t will be head from wait list, t->next is now head of wait list
-    TCB_t *t = *wait_list;
-    *wait_list = t->next;
+    TCB_t *t = *best;
+    *best = t->next;
     t->next = NULL;
 
     t->state = TASK_READY;
     append_to_ready(t);
 
     return t;
+}
+
+uint32_t enter_primask(void)
+{
+    uint32_t primask;
+    __asm volatile(
+        "mrs %0, primask \n"   
+        "cpsid i         \n"   
+        : "=r" (primask)       
+        :                      
+        : "memory"             
+    );
+    return primask;
+}
+
+void exit_primask(uint32_t primask)
+{
+    __asm volatile(
+        "msr primask, %0 \n"
+        :
+        : "r" (primask)
+        : "memory"
+    );
 }

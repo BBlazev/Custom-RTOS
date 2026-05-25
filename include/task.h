@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 #define TASK_STACK_WORDS    256
-#define MAX_TASKS           4
+#define MAX_TASKS           8
 #define MAX_PRIO            4
 
 typedef enum {
@@ -35,6 +35,9 @@ void rtos_start(void);
 void rtos_sleep(uint32_t ms);
 void rtos_schedule(void);
 void rtos_tick(uint32_t now);
+
+uint32_t enter_primask(void);
+void exit_primask(uint32_t primask);
 
 void block_current_task(TCB_t **wait_list);
 TCB_t *unblock_one_task(TCB_t **wait_list);
