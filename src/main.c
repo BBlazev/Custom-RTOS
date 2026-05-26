@@ -3,11 +3,14 @@
 #include "task.h"
 #include "systick.h"
 #include "sem.h"
+#include "mutex.h"
 
 #define SHPR3_PENDSV    (*(volatile uint8_t*)0xE000ED22)
 #define SHPR3_SYSTICK   (*(volatile uint8_t*)0xE000ED23)
 
 static sem_t g_sem;
+static mutex_t g_mtx;
+
 
 static void print_timer(uint32_t ms, char c)
 {
@@ -24,20 +27,42 @@ static void print_timer(uint32_t ms, char c)
     }
 }
 
-static void producer(void)
+static void busy_ms(uint32_t ms)
+{
+    uint32_t start = systick_get_ticks();
+    while(systick_get_ticks() - start < ms){}
+}
+
+
+static void low_task(void)
 {
     for(;;) {
-        rtos_sleep(1000);     
-        uart_putc('+');       
-        sem_give(&g_sem);     
+        mutex_lock(&g_mtx);
+        uart_putc('L');        
+        busy_ms(50);           
+        uart_putc('l');        
+        mutex_unlock(&g_mtx);
+        rtos_sleep(200);
     }
 }
 
-static void consumer(void)
+static void med_task(void)
 {
     for(;;) {
-        sem_take(&g_sem);     
-        uart_putc('C');       
+        rtos_sleep(10);
+        uart_putc('M');        
+        busy_ms(30);
+        rtos_sleep(100);
+    }
+}
+
+static void high_task(void)
+{
+    for(;;) {
+        rtos_sleep(20);        
+        mutex_lock(&g_mtx);    
+        uart_putc('H');        
+        mutex_unlock(&g_mtx);
     }
 }
 
@@ -72,9 +97,13 @@ int main(void)
     SHPR3_SYSTICK   = 0xE0;
     
     sem_init(&g_sem, 0);
+    mutex_init(&g_mtx);
 
-    task_create(producer, 1, 1);
-    task_create(consumer, 2, 0);
+    task_create(low_task, 1, 2);
+    task_create(med_task, 2, 1);
+    task_create(high_task, 3, 0);
+
+    
 
     systick_init(1);
 
